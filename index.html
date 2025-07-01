@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Player</title>
+    <!-- Tailwind CSS CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5; /* Light gray background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh; /* Full viewport height */
+            margin: 0;
+            padding: 20px; /* Padding for smaller screens */
+            box-sizing: border-box;
+        }
+
+        /* Custom styling for the progress bar */
+        input[type="range"] {
+            -webkit-appearance: none; /* Override default appearance */
+            appearance: none;
+            background: transparent; /* Hide original track */
+            width: 100%;
+            height: 8px; /* Height of the track */
+            cursor: pointer;
+            border-radius: 5px;
+            outline: none; /* Remove outline on focus */
+        }
+
+        /* Track styling for WebKit (Chrome, Safari) */
+        input[type="range"]::-webkit-slider-runnable-track {
+            background: #cbd5e1; /* Light gray track */
+            border-radius: 5px;
+            height: 8px;
+        }
+
+        /* Track styling for Firefox */
+        input[type="range"]::-moz-range-track {
+            background: #cbd5e1;
+            border-radius: 5px;
+            height: 8px;
+        }
+
+        /* Thumb styling for WebKit */
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 18px;
+            width: 18px;
+            background-color: #3b82f6; /* Blue thumb */
+            border-radius: 50%; /* Circular thumb */
+            border: 2px solid #ffffff; /* White border */
+            margin-top: -5px; /* Center thumb vertically on track */
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Thumb styling for Firefox */
+        input[type="range"]::-moz-range-thumb {
+            height: 18px;
+            width: 18px;
+            background-color: #3b82f6;
+            border-radius: 50%;
+            border: 2px solid #ffffff;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Fill progress on the track for WebKit */
+        input[type="range"]::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            background: #3b82f6; /* Blue fill */
+            border-radius: 5px;
+            width: var(--progress-width, 0%); /* Custom property for dynamic width */
+        }
+
+        /* Hide specific elements on smaller screens if needed (example) */
+        @media (max-width: 640px) {
+            .playlist-container {
+                display: none; /* Hide playlist on very small screens for brevity */
+            }
+        }
+    </style>
+</head>
+<body class="selection:bg-blue-200">
+    <div class="bg-white p-6 md:p-8 rounded-2xl shadow-xl max-w-xl w-full border border-gray-200">
+        <!-- Player Header -->
+        <div class="text-center mb-6">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 tracking-tight">🎶 Music Player</h1>
+            <p class="text-gray-500 text-sm mt-1">Enjoy your favorite tunes!</p>
+        </div>
+
+        <!-- Album Art and Song Info -->
+        <div class="flex flex-col items-center mb-6">
+            <img id="album-art" src="https://placehold.co/200x200/cccccc/333333?text=Album+Art" alt="Album Art"
+                class="w-40 h-40 md:w-48 md:h-48 rounded-xl shadow-md object-cover mb-4">
+            <h2 id="song-title" class="text-xl md:text-2xl font-semibold text-gray-800 text-center"></h2>
+            <p id="song-artist" class="text-md md:text-lg text-gray-600 text-center"></p>
+            <p id="song-album" class="text-sm text-gray-500 text-center"></p>
+        </div>
+
+        <!-- Audio Element (hidden, controlled by JS) -->
+        <audio id="audio-player" class="hidden"></audio>
+
+        <!-- Progress Bar -->
+        <div class="mb-6 relative">
+            <input type="range" id="progress-bar" value="0" min="0" max="100" class="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer">
+            <div class="flex justify-between text-xs text-gray-500 mt-2">
+                <span id="current-time">0:00</span>
+                <span id="duration">0:00</span>
+            </div>
+        </div>
+
+        <!-- Player Controls -->
+        <div class="flex justify-center items-center space-x-6 mb-6">
+            <button id="prev-button"
+                class="p-3 md:p-4 bg-blue-100 text-blue-600 rounded-full hover:bg-blue-200 transition-all duration-200 shadow-md transform hover:scale-105">
+                <i class="fas fa-backward text-xl"></i>
+            </button>
+            <button id="play-pause-button"
+                class="p-4 md:p-5 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-all duration-200 shadow-lg transform hover:scale-110">
+                <i id="play-pause-icon" class="fas fa-play text-2xl"></i>
+            </button>
+            <button id="next-button"
+                class="p-3 md:p-4 bg-blue-100 text-blue-600 rounded-full hover:bg-blue-200 transition-all duration-200 shadow-md transform hover:scale-105">
+                <i class="fas fa-forward text-xl"></i>
+            </button>
+        </div>
+
+        <!-- Volume Control -->
+        <div class="flex items-center space-x-4 mb-6">
+            <i class="fas fa-volume-down text-gray-500 text-lg"></i>
+            <input type="range" id="volume-slider" value="100" min="0" max="100"
+                class="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer">
+            <i class="fas fa-volume-up text-gray-500 text-lg"></i>
+        </div>
+
+        <!-- Playlist -->
+        <div class="mt-8 playlist-container">
+            <h3 class="text-xl font-semibold text-gray-700 mb-4 text-center">Playlist</h3>
+            <ul id="playlist" class="space-y-3 max-h-64 overflow-y-auto pr-2">
+                <!-- Playlist items will be injected here by JavaScript -->
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Get references to DOM elements
+        const audioPlayer = document.getElementById('audio-player');
+        const playPauseButton = document.getElementById('play-pause-button');
+        const playPauseIcon = document.getElementById('play-pause-icon');
+        const prevButton = document.getElementById('prev-button');
+        const nextButton = document.getElementById('next-button');
+        const progressBar = document.getElementById('progress-bar');
+        const volumeSlider = document.getElementById('volume-slider');
+        const songTitle = document.getElementById('song-title');
+        const songArtist = document.getElementById('song-artist');
+        const songAlbum = document.getElementById('song-album');
+        const albumArt = document.getElementById('album-art');
+        const currentTimeEl = document.getElementById('current-time');
+        const durationEl = document.getElementById('duration');
+        const playlistEl = document.getElementById('playlist');
+
+        // Define the playlist (static for now)
+        // In a real application, these would be fetched from a server or uploaded by the user.
+        // Using placeholder URLs for audio files and album art.
+        const songs = [
+            {
+                title: "Adventure Theme",
+                artist: "Composer A",
+                album: "Epic Soundtracks Vol. 1",
+                src: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", // Example MP3
+                albumArt: "https://placehold.co/200x200/87CEEB/ffffff?text=Adventure"
+            },
+            {
+                title: "Chill Vibes",
+                artist: "Beat Maker B",
+                album: "Lo-Fi Beats",
+                src: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3", // Example MP3
+                albumArt: "https://placehold.co/200x200/90EE90/ffffff?text=Chill"
+            },
+            {
+                title: "Upbeat Pop",
+                artist: "Synthwave C",
+                album: "Retro Future",
+                src: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3", // Example MP3
+                albumArt: "https://placehold.co/200x200/FFD700/ffffff?text=Upbeat"
+            },
+            {
+                title: "Melancholy Piano",
+                artist: "Pianist D",
+                album: "Quiet Moments",
+                src: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3", // Example MP3
+                albumArt: "https://placehold.co/200x200/B0C4DE/ffffff?text=Piano"
+            }
+        ];
+
+        let currentSongIndex = 0;
+        let isPlaying = false;
+
+        /**
+         * Loads a song into the audio player and updates the UI.
+         * @param {number} index - The index of the song in the `songs` array.
+         */
+        function loadSong(index) {
+            // Ensure the index is within bounds
+            if (index < 0) {
+                currentSongIndex = songs.length - 1; // Loop back to the last song
+            } else if (index >= songs.length) {
+                currentSongIndex = 0; // Loop back to the first song
+            } else {
+                currentSongIndex = index;
+            }
+
+            const song = songs[currentSongIndex];
+            audioPlayer.src = song.src;
+            songTitle.textContent = song.title;
+            songArtist.textContent = song.artist;
+            songAlbum.textContent = song.album;
+            albumArt.src = song.albumArt;
+
+            // Remove 'active' class from previous active song in playlist
+            document.querySelectorAll('.playlist-item').forEach(item => {
+                item.classList.remove('bg-blue-100', 'font-bold');
+            });
+            // Add 'active' class to the currently playing song in playlist
+            const currentPlaylistItem = document.getElementById(`song-${currentSongIndex}`);
+            if (currentPlaylistItem) {
+                currentPlaylistItem.classList.add('bg-blue-100', 'font-bold');
+            }
+
+            // If the song was playing, continue playing the new song
+            if (isPlaying) {
+                audioPlayer.play();
+            }
+        }
+
+        /**
+         * Toggles between play and pause states for the audio player.
+         */
+        function togglePlayPause() {
+            if (isPlaying) {
+                audioPlayer.pause();
+                playPauseIcon.classList.remove('fa-pause');
+                playPauseIcon.classList.add('fa-play');
+                isPlaying = false;
+            } else {
+                audioPlayer.play();
+                playPauseIcon.classList.remove('fa-play');
+                playPauseIcon.classList.add('fa-pause');
+                isPlaying = true;
+            }
+        }
+
+        /**
+         * Plays the next song in the playlist.
+         */
+        function playNextSong() {
+            loadSong(currentSongIndex + 1);
+            if (!isPlaying) { // If it wasn't playing, start playing the next song
+                togglePlayPause();
+            }
+        }
+
+        /**
+         * Plays the previous song in the playlist.
+         */
+        function playPrevSong() {
+            loadSong(currentSongIndex - 1);
+            if (!isPlaying) { // If it wasn't playing, start playing the previous song
+                togglePlayPause();
+            }
+        }
+
+        /**
+         * Formats time from seconds into MM:SS format.
+         * @param {number} seconds - The time in seconds.
+         * @returns {string} The formatted time string.
+         */
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = Math.floor(seconds % 60);
+            return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
+        }
+
+        /**
+         * Updates the progress bar and current time display as the song plays.
+         */
+        function updateProgressBar() {
+            const { duration, currentTime } = audioPlayer;
+            const progressPercent = (currentTime / duration) * 100;
+            progressBar.value = progressPercent || 0; // Handle NaN if duration is not available yet
+            progressBar.style.setProperty('--progress-width', `${progressPercent}%`);
+
+            currentTimeEl.textContent = formatTime(currentTime);
+
+            // Update total duration once metadata is loaded
+            if (duration) {
+                durationEl.textContent = formatTime(duration);
+            }
+        }
+
+        /**
+         * Seeks to a new position in the song based on the progress bar's value.
+         */
+        function seek() {
+            const seekTime = (progressBar.value / 100) * audioPlayer.duration;
+            audioPlayer.currentTime = seekTime;
+        }
+
+        /**
+         * Adjusts the volume of the audio player.
+         */
+        function adjustVolume() {
+            audioPlayer.volume = volumeSlider.value / 100;
+        }
+
+        /**
+         * Renders the playlist in the UI.
+         */
+        function renderPlaylist() {
+            playlistEl.innerHTML = ''; // Clear existing playlist items
+            songs.forEach((song, index) => {
+                const listItem = document.createElement('li');
+                listItem.id = `song-${index}`; // Assign a unique ID for active state management
+                listItem.classList.add(
+                    'playlist-item',
+                    'flex', 'items-center', 'p-3', 'rounded-lg', 'bg-gray-50',
+                    'hover:bg-gray-100', 'cursor-pointer', 'transition-colors', 'duration-200',
+                    'shadow-sm', 'border', 'border-gray-100'
+                );
+                listItem.innerHTML = `
+                    <img src="${song.albumArt}" alt="${song.title}" class="w-10 h-10 rounded-md mr-3 object-cover">
+                    <div class="flex-1">
+                        <p class="text-gray-800 text-base font-medium">${song.title}</p>
+                        <p class="text-gray-500 text-sm">${song.artist} - ${song.album}</p>
+                    </div>
+                `;
+                listItem.addEventListener('click', () => {
+                    loadSong(index);
+                    togglePlayPause(); // Start playing immediately upon selection
+                });
+                playlistEl.appendChild(listItem);
+            });
+        }
+
+
+        // --- Event Listeners ---
+
+        // Play/Pause button click
+        playPauseButton.addEventListener('click', togglePlayPause);
+
+        // Previous song button click
+        prevButton.addEventListener('click', playPrevSong);
+
+        // Next song button click
+        nextButton.addEventListener('click', playNextSong);
+
+        // Update progress bar as song plays
+        audioPlayer.addEventListener('timeupdate', updateProgressBar);
+
+        // When the song ends, play the next one
+        audioPlayer.addEventListener('ended', playNextSong);
+
+        // Update total duration once audio metadata is loaded
+        audioPlayer.addEventListener('loadedmetadata', () => {
+            durationEl.textContent = formatTime(audioPlayer.duration);
+        });
+
+        // Seek functionality for the progress bar
+        progressBar.addEventListener('input', seek); // 'input' fires as slider is dragged
+        progressBar.addEventListener('change', seek); // 'change' fires when slider is released
+
+        // Volume control
+        volumeSlider.addEventListener('input', adjustVolume);
+
+        // Initial setup: load the first song and render the playlist
+        window.onload = () => {
+            loadSong(currentSongIndex);
+            adjustVolume(); // Set initial volume
+            renderPlaylist();
+        };
+
+    </script>
+</body>
+</html>
